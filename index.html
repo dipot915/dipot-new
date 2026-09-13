@@ -78,6 +78,14 @@
   }
   .nav-cta:hover{transform:translateY(-2px) scale(1.03); box-shadow:0 10px 24px -8px rgba(37,211,102,0.6);}
 
+  /* ---------- Hero banner image ---------- */
+  .hero-banner-img{
+    width:100%; display:block; max-height:420px; object-fit:cover; object-position:center;
+  }
+  @media(max-width:700px){
+    .hero-banner-img{ max-height:220px; }
+  }
+
   /* ---------- Marquee ---------- */
   .marquee{position:relative; z-index:1; border-bottom:1px solid var(--border); overflow:hidden; padding:12px 0; background:var(--surface);}
   .marquee-track{display:flex; gap:48px; width:max-content; animation:scroll-left 26s linear infinite;}
@@ -285,6 +293,8 @@
     </a>
   </div>
 </header>
+
+<img src="hero-banner.png" alt="Dipot — AI Tools for a Smarter You" class="hero-banner-img">
 
 <div class="marquee"><div class="marquee-track" id="marqueeTrack"></div></div>
 
