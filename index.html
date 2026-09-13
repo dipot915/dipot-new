@@ -429,8 +429,34 @@ const filtersEl = document.getElementById("filters");
 const gridEl = document.getElementById("grid");
 let activeCat = "All";
 
+// ---- Load & apply design settings ----
+async function loadDesignSettings(){
+  const { data } = await sb.from("site_settings").select("*").eq("id",1).single();
+  if(!data) return;
+  const root = document.documentElement.style;
+  if(data.bg_color) root.setProperty("--bg", data.bg_color);
+  if(data.accent_color) root.setProperty("--accent", data.accent_color);
+  if(data.accent_color_2) root.setProperty("--accent-2", data.accent_color_2);
+  if(data.price_color) root.setProperty("--price", data.price_color);
+  if(data.heading_font || data.body_font){
+    const h = data.heading_font || "Space Grotesk";
+    const b = data.body_font || "Manrope";
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${h.replace(/ /g,"+")}:wght@500;600;700&family=${b.replace(/ /g,"+")}:wght@400;500;600;700&display=swap`;
+    document.head.appendChild(link);
+    document.documentElement.style.setProperty("--font-heading", `'${h}', sans-serif`);
+    document.documentElement.style.setProperty("--font-body", `'${b}', sans-serif`);
+    document.querySelectorAll("h1,h2,h3,.logo").forEach(el=> el.style.fontFamily = `'${h}', sans-serif`);
+    document.body.style.fontFamily = `'${b}', sans-serif`;
+  }
+  if(data.hero_title){ const el=document.querySelector(".hero h1"); if(el) el.innerHTML = data.hero_title; }
+  if(data.hero_subtitle){ const el=document.querySelector(".hero p.sub"); if(el) el.textContent = data.hero_subtitle; }
+}
+
 // ---- Load products & categories from Supabase ----
 async function loadStorefront(){
+  await loadDesignSettings();
   const { data: cats } = await sb.from("categories").select("*").eq("is_active", true).order("sort_order");
   const { data: prods } = await sb.from("products")
     .select("*, categories(name)")
