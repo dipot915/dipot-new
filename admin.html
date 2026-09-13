@@ -124,6 +124,7 @@
       <a data-page="dashboard" class="active">Dashboard</a>
       <a data-page="products">Products</a>
       <a data-page="categories">Categories</a>
+      <a data-page="design">Design</a>
       <a data-page="account">Account</a>
     </nav>
     <div class="bottom">
@@ -168,6 +169,40 @@
         <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>Order</th><th></th></tr></thead>
         <tbody id="categoriesTable"></tbody>
       </table>
+    </section>
+
+    <!-- Design -->
+    <section class="page" id="page-design">
+      <div class="page-head"><h1>Design</h1></div>
+      <div style="max-width:480px;">
+        <div class="grid-2">
+          <div class="field"><label>Background color</label><input type="color" id="sBg"></div>
+          <div class="field"><label>Accent color 1</label><input type="color" id="sAccent"></div>
+          <div class="field"><label>Accent color 2</label><input type="color" id="sAccent2"></div>
+          <div class="field"><label>Price text color</label><input type="color" id="sPrice"></div>
+        </div>
+        <div class="field">
+          <label>Heading font</label>
+          <select id="sHeadingFont">
+            <option value="Space Grotesk">Space Grotesk (modern/tech)</option>
+            <option value="Poppins">Poppins (friendly/rounded)</option>
+            <option value="Playfair Display">Playfair Display (elegant/premium)</option>
+            <option value="Montserrat">Montserrat (clean/corporate)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Body font</label>
+          <select id="sBodyFont">
+            <option value="Manrope">Manrope</option>
+            <option value="Inter">Inter</option>
+            <option value="Roboto">Roboto</option>
+            <option value="Nunito Sans">Nunito Sans</option>
+          </select>
+        </div>
+        <div class="field"><label>Hero title</label><input type="text" id="sHeroTitle"></div>
+        <div class="field"><label>Hero subtitle</label><textarea id="sHeroSub" rows="2"></textarea></div>
+        <button class="btn" id="saveDesignBtn" style="width:auto;">Save design</button>
+      </div>
     </section>
 
     <!-- Account -->
@@ -275,11 +310,42 @@ document.querySelectorAll("nav a").forEach(a=>{
 async function loadAll(){
   await loadCategories();
   await loadProducts();
+  await loadDesignSettings();
   renderDashboard();
   renderProducts();
   renderCategories();
   populateCategoryFilter();
 }
+
+let designSettings = null;
+async function loadDesignSettings(){
+  const { data, error } = await sb.from("site_settings").select("*").eq("id",1).single();
+  if(error){ return; }
+  designSettings = data;
+  document.getElementById("sBg").value = data.bg_color;
+  document.getElementById("sAccent").value = data.accent_color;
+  document.getElementById("sAccent2").value = data.accent_color_2;
+  document.getElementById("sPrice").value = data.price_color;
+  document.getElementById("sHeadingFont").value = data.heading_font;
+  document.getElementById("sBodyFont").value = data.body_font;
+  document.getElementById("sHeroTitle").value = data.hero_title;
+  document.getElementById("sHeroSub").value = data.hero_subtitle;
+}
+document.getElementById("saveDesignBtn").onclick = async ()=>{
+  const payload = {
+    bg_color: document.getElementById("sBg").value,
+    accent_color: document.getElementById("sAccent").value,
+    accent_color_2: document.getElementById("sAccent2").value,
+    price_color: document.getElementById("sPrice").value,
+    heading_font: document.getElementById("sHeadingFont").value,
+    body_font: document.getElementById("sBodyFont").value,
+    hero_title: document.getElementById("sHeroTitle").value,
+    hero_subtitle: document.getElementById("sHeroSub").value
+  };
+  const { error } = await sb.from("site_settings").update(payload).eq("id",1);
+  if(error){ toast(error.message,"error"); return; }
+  toast("Design saved — refresh your website to see it live.", "success");
+};
 
 async function loadCategories(){
   const { data, error } = await sb.from("categories").select("*").order("sort_order");
