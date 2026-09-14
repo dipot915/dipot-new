@@ -431,9 +431,23 @@ function waLink(product){
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
 }
 
+// ---- Analytics ----
+function trackEvent(event_type, product){
+  sb.from("analytics_events").insert({
+    event_type,
+    product_id: product ? product.id : null,
+    product_name: product ? product.name : null
+  }).then(()=>{});
+}
+trackEvent("page_view");
+
 document.getElementById("heroWaBtn").href = waLink();
 document.getElementById("floatWaBtn").href = waLink();
 document.getElementById("footerWaLink").href = waLink();
+[document.getElementById("heroWaBtn"), document.getElementById("floatWaBtn"), document.getElementById("footerWaLink")].forEach(btn=>{
+  btn.target = "_blank"; btn.rel = "noopener";
+  btn.addEventListener("click", ()=> trackEvent("whatsapp_click"));
+});
 
 const filtersEl = document.getElementById("filters");
 const gridEl = document.getElementById("grid");
@@ -579,7 +593,7 @@ function renderGrid(){
           ? `<div class="price" style="font-size:14px;">${p.plans.length} plans<span> from Rs ${Math.min(...p.plans.map(pl=>pl.price)).toLocaleString()}</span></div>
              <button class="order-btn view-options-btn" type="button">View options</button>`
           : `<div class="price">Rs ${p.price.toLocaleString()}<span> /mo</span></div>
-             <a class="order-btn" href="${waLink(p)}">Order now</a>`
+             <a class="order-btn" href="${waLink(p)}" target="_blank" rel="noopener">Order now</a>`
         }
       </div>
     `;
@@ -588,8 +602,10 @@ function renderGrid(){
       card.style.setProperty("--mx", ((e.clientX-r.left)/r.width*100)+"%");
       card.style.setProperty("--my", ((e.clientY-r.top)/r.height*100)+"%");
     });
+    const orderBtn = card.querySelector(".order-btn:not(.view-options-btn)");
+    if(orderBtn){ orderBtn.addEventListener("click", ()=> trackEvent("whatsapp_click", p)); }
     const viewBtn = card.querySelector(".view-options-btn");
-    if(viewBtn){ viewBtn.onclick = ()=> openProductDetail(p); }
+    if(viewBtn){ viewBtn.onclick = ()=>{ trackEvent("product_click", p); openProductDetail(p); }; }
     gridEl.appendChild(card);
   });
   observeReveals();
@@ -620,7 +636,7 @@ function openProductDetail(p){
               <div class="plan-name">${pl.name}</div>
               <div class="price">Rs ${Number(pl.price).toLocaleString()}<span> /mo</span></div>
             </div>
-            <a class="order-btn plan-order-btn" href="${waLink({...p, whatsapp_message: p.whatsapp_message || `Hi, I'm interested in ${p.name} - ${pl.name} (Rs ${pl.price})`})}">Order on WhatsApp</a>
+            <a class="order-btn plan-order-btn" href="${waLink({...p, whatsapp_message: p.whatsapp_message || `Hi, I'm interested in ${p.name} - ${pl.name} (Rs ${pl.price})`})}" target="_blank" rel="noopener">Order on WhatsApp</a>
           </div>
         `).join("")}
       </div>
@@ -629,6 +645,9 @@ function openProductDetail(p){
   document.body.appendChild(overlay);
   overlay.addEventListener("click",(e)=>{ if(e.target===overlay) overlay.remove(); });
   overlay.querySelector(".detail-close").onclick = ()=> overlay.remove();
+  overlay.querySelectorAll(".plan-order-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> trackEvent("whatsapp_click", p));
+  });
 }
 
 loadStorefront();
