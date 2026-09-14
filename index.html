@@ -512,11 +512,17 @@ function renderDeck(){
   deckItems.forEach((p,i)=>{
     const el = document.createElement("div");
     el.className = "badge-float";
-    el.style.background = colorFor(i);
     el.style.top = positions[i].top;
     el.style.left = positions[i].left;
     el.style.animationDelay = (i*0.08)+"s, "+(0.7+i*0.15)+"s";
-    el.textContent = p.tag;
+    if(p.image_url){
+      el.style.background = "#fff";
+      el.style.padding = "12px";
+      el.innerHTML = `<img src="${p.image_url}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;">`;
+    } else {
+      el.style.background = colorFor(i);
+      el.textContent = p.tag;
+    }
     deck.appendChild(el);
   });
 }
