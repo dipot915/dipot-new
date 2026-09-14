@@ -137,6 +137,9 @@
     <section class="page active" id="page-dashboard">
       <div class="page-head"><h1>Dashboard</h1></div>
       <div class="stat-grid" id="statGrid"></div>
+      <div class="stat-grid" id="analyticsGrid" style="margin-bottom:32px;"></div>
+      <h3 style="margin-bottom:12px;">Trending products (most clicked)</h3>
+      <table style="margin-bottom:32px;"><tbody id="trendingTable"></tbody></table>
       <h3 style="margin-bottom:12px;">Recently updated products</h3>
       <table><tbody id="recentTable"></tbody></table>
     </section>
@@ -311,10 +314,36 @@ async function loadAll(){
   await loadCategories();
   await loadProducts();
   await loadDesignSettings();
+  await loadAnalytics();
   renderDashboard();
+  renderAnalytics();
   renderProducts();
   renderCategories();
   populateCategoryFilter();
+}
+
+let analyticsData = { pageViews:0, waClicks:0, trending:[] };
+async function loadAnalytics(){
+  const { data, error } = await sb.from("analytics_events").select("event_type, product_name").limit(20000);
+  if(error || !data){ return; }
+  const pageViews = data.filter(e=>e.event_type==="page_view").length;
+  const waClicks = data.filter(e=>e.event_type==="whatsapp_click").length;
+  const counts = {};
+  data.filter(e=>e.event_type==="product_click" || e.event_type==="whatsapp_click").forEach(e=>{
+    if(!e.product_name) return;
+    counts[e.product_name] = (counts[e.product_name]||0) + 1;
+  });
+  const trending = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  analyticsData = { pageViews, waClicks, trending };
+}
+function renderAnalytics(){
+  document.getElementById("analyticsGrid").innerHTML = `
+    <div class="stat-card"><b>${analyticsData.pageViews}</b><span>Total website visits</span></div>
+    <div class="stat-card"><b>${analyticsData.waClicks}</b><span>WhatsApp orders started</span></div>
+  `;
+  document.getElementById("trendingTable").innerHTML = analyticsData.trending.length
+    ? analyticsData.trending.map(([name,count])=>`<tr><td>${name}</td><td style="text-align:right;color:var(--text-muted);">${count} clicks</td></tr>`).join("")
+    : `<tr><td class="empty">No clicks recorded yet</td></tr>`;
 }
 
 let designSettings = null;
