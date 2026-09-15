@@ -511,9 +511,9 @@ async function loadAnalytics(){
 }
 
 async function loadPresence(){
-  const cutoff = new Date(Date.now() - 60*1000).toISOString();
-  const { count } = await sb.from("presence_pings").select("session_id", { count:"exact", head:true }).gte("last_seen", cutoff);
-  liveCount = count || 0;
+  const cutoff = new Date(Date.now() - 90*1000).toISOString();
+  const { data, error } = await sb.from("presence_pings").select("session_id, last_seen").gte("last_seen", cutoff);
+  liveCount = (!error && data) ? data.length : 0;
 }
 
 async function loadOrders(){
