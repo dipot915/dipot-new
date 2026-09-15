@@ -132,6 +132,7 @@
       <a data-page="categories">Categories</a>
       <a data-page="orders">Orders</a>
       <a data-page="design">Design</a>
+      <a data-page="notifications">Notifications</a>
       <a data-page="account">Account</a>
     </nav>
     <div class="bottom">
@@ -274,6 +275,31 @@
       </div>
     </section>
 
+    <!-- Notifications -->
+    <section class="page" id="page-notifications">
+      <div class="page-head"><h1>Notifications</h1></div>
+      <div class="stat-grid" id="notifStatGrid"></div>
+
+      <h3 class="section-label">Send notification</h3>
+      <div style="max-width:480px;">
+        <div class="field"><label>Title</label><input type="text" id="notifTitle" placeholder="🚀 New AI Tool Added"></div>
+        <div class="field"><label>Message</label><textarea id="notifMessage" rows="2" placeholder="Google Flow is now available on Dipot."></textarea></div>
+        <div class="field"><label>Image URL (optional)</label><input type="text" id="notifImage"></div>
+        <div class="field"><label>Icon URL (optional)</label><input type="text" id="notifIcon"></div>
+        <div class="field"><label>Target URL</label><input type="text" id="notifUrl" value="https://dipot.vercel.app/"></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);margin-bottom:14px;">
+          <input type="checkbox" id="notifTest"> Test mode (sends to your most recent subscriber only)
+        </label>
+        <button class="btn" id="sendNotifBtn" style="width:auto;">Send notification</button>
+      </div>
+
+      <h3 class="section-label" style="margin-top:28px;">Notification history</h3>
+      <table>
+        <thead><tr><th>Title</th><th>Sent</th><th>Clicked</th><th>CTR</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody id="notifHistoryTable"></tbody>
+      </table>
+    </section>
+
     <!-- Account -->
     <section class="page" id="page-account">
       <div class="page-head"><h1>Account</h1></div>
@@ -384,12 +410,14 @@ async function loadAll(){
   await loadPresence();
   await loadOrders();
   await loadProfit();
+  await loadNotifications();
   renderDashboard();
   renderAnalytics();
   renderProducts();
   renderCategories();
   renderOrders();
   renderProfit();
+  renderNotifications();
   populateCategoryFilter();
   populateOrderProductSelect();
   const dEl = document.getElementById("profitDate");
@@ -1027,6 +1055,74 @@ document.getElementById("changePasswordBtn").onclick = async ()=>{
   if(error){ toast(error.message,"error"); return; }
   toast("Password changed.", "success");
   document.getElementById("newPassword").value = "";
+};
+
+
+/* ---------------- NOTIFICATIONS ---------------- */
+let subscribersData = [];
+let notificationsData = [];
+async function loadNotifications(){
+  const { data: subs } = await sb.from("push_subscriptions").select("status");
+  subscribersData = subs || [];
+  const { data: notifs } = await sb.from("notifications").select("*").order("created_at", { ascending:false }).limit(200);
+  notificationsData = notifs || [];
+}
+function renderNotifications(){
+  const total = subscribersData.length;
+  const active = subscribersData.filter(s=>s.status==="active").length;
+  const totalSent = notificationsData.reduce((s,n)=>s+(n.total_sent||0),0);
+  const totalClicks = notificationsData.reduce((s,n)=>s+(n.total_clicked||0),0);
+  document.getElementById("notifStatGrid").innerHTML = `
+    <div class="stat-card"><b>${total}</b><span>Subscribers</span></div>
+    <div class="stat-card"><b>${active}</b><span>Active</span></div>
+    <div class="stat-card"><b>${totalSent}</b><span>Notifications sent</span></div>
+    <div class="stat-card"><b>${totalClicks}</b><span>Total clicks</span></div>
+  `;
+  document.getElementById("notifHistoryTable").innerHTML = notificationsData.length
+    ? notificationsData.map(n=>{
+        const ctr = n.total_sent > 0 ? ((n.total_clicked/n.total_sent)*100).toFixed(1) : "0.0";
+        return `<tr>
+          <td>${n.title}</td>
+          <td>${n.total_sent||0}</td>
+          <td>${n.total_clicked||0}</td>
+          <td>${ctr}%</td>
+          <td>${fmtDate(n.created_at)}</td>
+          <td><span class="pill ${n.status==='completed'?'pill-on':'pill-off'}">${n.status}</span></td>
+        </tr>`;
+      }).join("")
+    : `<tr><td colspan="6" class="empty">No notifications sent yet</td></tr>`;
+}
+document.getElementById("sendNotifBtn").onclick = async ()=>{
+  const title = document.getElementById("notifTitle").value.trim();
+  const message = document.getElementById("notifMessage").value.trim();
+  if(!title || !message){ toast("Title and message are required.", "error"); return; }
+  const payload = {
+    title, message,
+    image_url: document.getElementById("notifImage").value.trim() || null,
+    icon_url: document.getElementById("notifIcon").value.trim() || null,
+    target_url: document.getElementById("notifUrl").value.trim() || "https://dipot.vercel.app/",
+    test: document.getElementById("notifTest").checked
+  };
+  const btn = document.getElementById("sendNotifBtn");
+  btn.textContent = "Sending..."; btn.disabled = true;
+  try{
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch("/api/send-notification", {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "Authorization": "Bearer " + session.access_token },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if(!res.ok){ toast(result.error || "Failed to send.", "error"); }
+    else if(result.message){ toast(result.message, "error"); }
+    else{ toast(`Sent to ${result.sent} subscriber(s), ${result.failed} failed.`, "success"); }
+    document.getElementById("notifTitle").value = "";
+    document.getElementById("notifMessage").value = "";
+    await loadNotifications(); renderNotifications();
+  }catch(e){
+    toast("Could not reach the notification service. Is /api/send-notification deployed?", "error");
+  }
+  btn.textContent = "Send notification"; btn.disabled = false;
 };
 
 checkSession();
