@@ -297,7 +297,7 @@
 
 <div class="mesh-bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 
-<div class="promo">🔥 Limited-time launch pricing on all AI tools — order this week and save</div>
+<div class="promo" id="promoText">🔥 Limited-time launch pricing on all AI tools — order this week and save</div>
 
 <header>
   <div class="wrap">
@@ -361,7 +361,7 @@
 
 <section class="why reveal">
   <div class="wrap">
-    <h2>Why buy through Dipot</h2>
+    <h2 id="whyUsHeading">Why buy through Dipot</h2>
     <div class="why-grid">
       <div class="why-item"><div class="why-num">01</div><h3>Instant delivery</h3><p>Most orders are set up and sent within minutes of confirming payment on WhatsApp.</p></div>
       <div class="why-item"><div class="why-num">02</div><h3>Real savings</h3><p>Shared and reseller-rate licenses mean you pay a fraction of the official subscription price.</p></div>
@@ -396,7 +396,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>&copy; 2026 Dipot. All tools sold are third-party subscriptions/licenses resold under reseller access.</span>
+      <span id="footerCopyright">&copy; 2026 Dipot. All tools sold are third-party subscriptions/licenses resold under reseller access.</span>
       <span>Payments &amp; delivery handled directly over WhatsApp.</span>
     </div>
   </div>
@@ -524,6 +524,9 @@ async function loadDesignSettings(){
   }
   if(data.hero_title){ const el=document.querySelector(".hero h1"); if(el) el.innerHTML = data.hero_title; }
   if(data.hero_subtitle){ const el=document.querySelector(".hero p.sub"); if(el) el.textContent = data.hero_subtitle; }
+  if(data.promo_text){ const el=document.getElementById("promoText"); if(el) el.textContent = data.promo_text; }
+  if(data.why_us_heading){ const el=document.getElementById("whyUsHeading"); if(el) el.textContent = data.why_us_heading; }
+  if(data.footer_text){ const el=document.getElementById("footerCopyright"); if(el) el.innerHTML = data.footer_text; }
 }
 
 // ---- Load products & categories from Supabase ----
@@ -695,13 +698,13 @@ async function openProductDetail(p){
               <div class="plan-name">${pl.name}</div>
               <div class="price">Rs ${Number(pl.price).toLocaleString()}<span> /mo</span></div>
             </div>
-            <a class="order-btn plan-order-btn" href="${waLink({...p, whatsapp_message: p.whatsapp_message || `Hi, I'm interested in ${p.name} - ${pl.name} (Rs ${pl.price})`})}" target="_blank" rel="noopener">Order on WhatsApp</a>
+            <a class="order-btn plan-order-btn" data-amount="${pl.price}" data-planname="${pl.name}" href="${waLink({...p, whatsapp_message: p.whatsapp_message || `Hi, I'm interested in ${p.name} - ${pl.name} (Rs ${pl.price})`})}" target="_blank" rel="noopener">Order on WhatsApp</a>
           </div>
         `).join("")}
       </div>`
     : `<div class="plan-row">
         <div class="price" style="font-size:20px;">Rs ${p.price.toLocaleString()}<span> /mo</span></div>
-        <a class="order-btn plan-order-btn" href="${waLink(p)}" target="_blank" rel="noopener">Order on WhatsApp</a>
+        <a class="order-btn plan-order-btn" data-amount="${p.price}" data-planname="" href="${waLink(p)}" target="_blank" rel="noopener">Order on WhatsApp</a>
       </div>`;
 
   const featuresBlock = p.features && p.features.length
@@ -744,7 +747,16 @@ async function openProductDetail(p){
   overlay.addEventListener("click",(e)=>{ if(e.target===overlay) overlay.remove(); });
   overlay.querySelector(".detail-close").onclick = ()=> overlay.remove();
   overlay.querySelectorAll(".plan-order-btn").forEach(btn=>{
-    btn.addEventListener("click", ()=> trackEvent("whatsapp_click", p));
+    btn.addEventListener("click", ()=>{
+      trackEvent("whatsapp_click", p);
+      const amount = parseFloat(btn.dataset.amount) || 0;
+      const planName = btn.dataset.planname;
+      sb.from("orders").insert({
+        product_id: p.id,
+        product_name: p.name + (planName ? " - " + planName : ""),
+        amount, cost: 0, source: "auto"
+      }).then(()=>{});
+    });
   });
   overlay.querySelectorAll("#detailFaq .faq-item").forEach(item=>{
     const btn = item.querySelector(".faq-q");
