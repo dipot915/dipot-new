@@ -159,6 +159,23 @@
       <h3 class="section-label">Today's business report</h3>
       <div class="stat-grid" id="todayGrid"></div>
 
+      <h3 class="section-label">Profit tracker</h3>
+      <div class="dash-two-col" style="margin-bottom:24px;">
+        <div>
+          <div class="field"><label>Date</label><input type="date" id="profitDate"></div>
+          <div class="field"><label>Today's profit (use a minus sign for a loss, e.g. -500)</label><input type="number" id="profitAmount"></div>
+          <div class="field"><label>Note (optional)</label><input type="text" id="profitNote"></div>
+          <button class="btn" id="saveProfitBtn" style="width:auto;">Save today's profit</button>
+        </div>
+        <div>
+          <div class="stat-card" style="margin-bottom:12px;">
+            <b id="monthProfitTotal">Rs 0</b><span id="monthProfitLabel">This month's total</span>
+          </div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">Previous months</div>
+          <table><tbody id="pastMonthsTable"></tbody></table>
+        </div>
+      </div>
+
       <div class="dash-two-col">
         <div>
           <h3 class="section-label">Top products (by orders)</h3>
@@ -203,7 +220,7 @@
       </div>
       <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Payment happens on WhatsApp, so log each confirmed sale here — this powers your revenue, profit, and conversion numbers.</p>
       <table>
-        <thead><tr><th>Product</th><th>Amount</th><th>Cost</th><th>Profit</th><th>Date</th><th></th></tr></thead>
+        <thead><tr><th>Product</th><th>Amount</th><th>Cost</th><th>Profit</th><th>Source</th><th>Date</th><th></th></tr></thead>
         <tbody id="ordersTable"></tbody>
       </table>
     </section>
@@ -250,6 +267,9 @@
         </div>
         <div class="field"><label>Hero title</label><input type="text" id="sHeroTitle"></div>
         <div class="field"><label>Hero subtitle</label><textarea id="sHeroSub" rows="2"></textarea></div>
+        <div class="field"><label>Top promo banner text</label><input type="text" id="sPromoText"></div>
+        <div class="field"><label>"Why us" section heading</label><input type="text" id="sWhyHeading"></div>
+        <div class="field"><label>Footer text</label><input type="text" id="sFooterText"></div>
         <button class="btn" id="saveDesignBtn" style="width:auto;">Save design</button>
       </div>
     </section>
@@ -363,14 +383,72 @@ async function loadAll(){
   await loadAnalytics();
   await loadPresence();
   await loadOrders();
+  await loadProfit();
   renderDashboard();
   renderAnalytics();
   renderProducts();
   renderCategories();
   renderOrders();
+  renderProfit();
   populateCategoryFilter();
   populateOrderProductSelect();
+  const dEl = document.getElementById("profitDate");
+  if(dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0,10);
 }
+
+let profitData = [];
+async function loadProfit(){
+  const { data, error } = await sb.from("daily_profit").select("*").order("entry_date", { ascending:false }).limit(2000);
+  if(error || !data){ profitData = []; return; }
+  profitData = data;
+}
+function renderProfit(){
+  const now = new Date();
+  const curKey = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const byMonth = {};
+  profitData.forEach(r=>{
+    const key = r.entry_date.slice(0,7);
+    byMonth[key] = (byMonth[key]||0) + Number(r.amount||0);
+  });
+  const curTotal = byMonth[curKey] || 0;
+  const totalEl = document.getElementById("monthProfitTotal");
+  totalEl.textContent = (curTotal<0?"-":"") + "Rs " + Math.abs(curTotal).toLocaleString();
+  totalEl.style.color = curTotal < 0 ? "var(--danger)" : "var(--accent-2)";
+  document.getElementById("monthProfitLabel").textContent = monthNames[now.getMonth()] + " " + now.getFullYear() + " total";
+
+  const pastRows = Object.entries(byMonth).filter(([k])=>k!==curKey).sort((a,b)=> b[0].localeCompare(a[0]));
+  document.getElementById("pastMonthsTable").innerHTML = pastRows.length
+    ? pastRows.map(([key,total])=>{
+        const [y,m] = key.split("-");
+        const label = monthNames[parseInt(m)-1] + " " + y;
+        return `<tr><td>${label}</td><td style="text-align:right; color:${total<0?'var(--danger)':'var(--text-muted)'};">${total<0?"-":""}Rs ${Math.abs(total).toLocaleString()}</td></tr>`;
+      }).join("")
+    : `<tr><td class="empty">No past months yet</td></tr>`;
+}
+document.getElementById("saveProfitBtn").onclick = async ()=>{
+  const entry_date = document.getElementById("profitDate").value;
+  const amount = parseFloat(document.getElementById("profitAmount").value);
+  const note = document.getElementById("profitNote").value.trim() || null;
+  if(!entry_date || isNaN(amount)){ toast("Pick a date and enter an amount.", "error"); return; }
+  const { error } = await sb.from("daily_profit").upsert({ entry_date, amount, note }, { onConflict: "entry_date" });
+  if(error){ toast(error.message, "error"); return; }
+  toast("Profit saved for " + entry_date + ".", "success");
+  document.getElementById("profitAmount").value = "";
+  document.getElementById("profitNote").value = "";
+  await loadProfit(); renderProfit();
+};
+
+// ---- Auto-refresh dashboard every 15s so live numbers stay current ----
+setInterval(async ()=>{
+  if(!document.getElementById("page-dashboard").classList.contains("active")) return;
+  await loadAnalytics();
+  await loadPresence();
+  await loadOrders();
+  await loadProfit();
+  renderAnalytics();
+  renderProfit();
+}, 15000);
 
 let analyticsData = { pageViews:0, waClicks:0, productClicks:0, trending:[], visitorsToday:0, visitorsWeek:0, visitorsMonth:0, sources:[], perProduct:{} };
 let ordersData = [];
@@ -507,10 +585,11 @@ function renderOrders(){
       <td>Rs ${Number(o.amount||0).toLocaleString()}</td>
       <td>Rs ${Number(o.cost||0).toLocaleString()}</td>
       <td>Rs ${(Number(o.amount||0)-Number(o.cost||0)).toLocaleString()}</td>
+      <td><span class="pill ${o.source==='auto' ? 'pill-featured' : 'pill-on'}">${o.source==='auto' ? 'Auto (click)' : 'Manual'}</span></td>
       <td>${fmtDate(o.created_at)}</td>
       <td><button class="danger" onclick="deleteOrder('${o.id}')">Delete</button></td>
     </tr>
-  `).join("") : `<tr><td colspan="6" class="empty">No orders logged yet</td></tr>`;
+  `).join("") : `<tr><td colspan="7" class="empty">No orders logged yet</td></tr>`;
 }
 document.getElementById("logOrderBtn").onclick = ()=>{
   const overlay = document.createElement("div");
@@ -538,7 +617,8 @@ document.getElementById("logOrderBtn").onclick = ()=>{
       product_id: opt.value,
       product_name: opt.dataset.name,
       amount: parseFloat(document.getElementById("orderAmount").value) || 0,
-      cost: parseFloat(document.getElementById("orderCost").value) || 0
+      cost: parseFloat(document.getElementById("orderCost").value) || 0,
+      source: "manual"
     };
     const { error } = await sb.from("orders").insert(payload);
     if(error){ toast(error.message,"error"); return; }
@@ -567,6 +647,9 @@ async function loadDesignSettings(){
   document.getElementById("sBodyFont").value = data.body_font;
   document.getElementById("sHeroTitle").value = data.hero_title;
   document.getElementById("sHeroSub").value = data.hero_subtitle;
+  document.getElementById("sPromoText").value = data.promo_text || "";
+  document.getElementById("sWhyHeading").value = data.why_us_heading || "";
+  document.getElementById("sFooterText").value = data.footer_text || "";
 }
 document.getElementById("saveDesignBtn").onclick = async ()=>{
   const payload = {
@@ -577,7 +660,10 @@ document.getElementById("saveDesignBtn").onclick = async ()=>{
     heading_font: document.getElementById("sHeadingFont").value,
     body_font: document.getElementById("sBodyFont").value,
     hero_title: document.getElementById("sHeroTitle").value,
-    hero_subtitle: document.getElementById("sHeroSub").value
+    hero_subtitle: document.getElementById("sHeroSub").value,
+    promo_text: document.getElementById("sPromoText").value,
+    why_us_heading: document.getElementById("sWhyHeading").value,
+    footer_text: document.getElementById("sFooterText").value
   };
   const { error } = await sb.from("site_settings").update(payload).eq("id",1);
   if(error){ toast(error.message,"error"); return; }
