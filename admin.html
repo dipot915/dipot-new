@@ -164,9 +164,12 @@
       <div class="dash-two-col" style="margin-bottom:24px;">
         <div>
           <div class="field"><label>Date</label><input type="date" id="profitDate"></div>
-          <div class="field"><label>Today's profit (use a minus sign for a loss, e.g. -500)</label><input type="number" id="profitAmount"></div>
+          <div class="grid-2">
+            <div class="field"><label style="color:var(--accent-2);">+ Profit / income</label><input type="number" id="profitPlus" placeholder="0"></div>
+            <div class="field"><label style="color:var(--danger);">- Loss / expense</label><input type="number" id="profitMinus" placeholder="0"></div>
+          </div>
           <div class="field"><label>Note (optional)</label><input type="text" id="profitNote"></div>
-          <button class="btn" id="saveProfitBtn" style="width:auto;">Save today's profit</button>
+          <button class="btn" id="saveProfitBtn" style="width:auto;">Save today's entry</button>
         </div>
         <div>
           <div class="stat-card" style="margin-bottom:12px;">
@@ -456,13 +459,16 @@ function renderProfit(){
 }
 document.getElementById("saveProfitBtn").onclick = async ()=>{
   const entry_date = document.getElementById("profitDate").value;
-  const amount = parseFloat(document.getElementById("profitAmount").value);
+  const plus = parseFloat(document.getElementById("profitPlus").value) || 0;
+  const minus = parseFloat(document.getElementById("profitMinus").value) || 0;
   const note = document.getElementById("profitNote").value.trim() || null;
-  if(!entry_date || isNaN(amount)){ toast("Pick a date and enter an amount.", "error"); return; }
+  if(!entry_date || (plus===0 && minus===0)){ toast("Pick a date and enter a + or - amount.", "error"); return; }
+  const amount = plus - minus;
   const { error } = await sb.from("daily_profit").upsert({ entry_date, amount, note }, { onConflict: "entry_date" });
   if(error){ toast(error.message, "error"); return; }
-  toast("Profit saved for " + entry_date + ".", "success");
-  document.getElementById("profitAmount").value = "";
+  toast("Saved for " + entry_date + " — net Rs " + amount.toLocaleString(), "success");
+  document.getElementById("profitPlus").value = "";
+  document.getElementById("profitMinus").value = "";
   document.getElementById("profitNote").value = "";
   await loadProfit(); renderProfit();
 };
