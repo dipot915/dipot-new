@@ -122,7 +122,7 @@
   .hero-stats div b{display:block; font-size:24px; font-family:'Space Grotesk';}
   .hero-stats div span{font-size:13px; color:var(--text-muted);}
 
-  .deck{position:relative; height:380px; min-width:320px; overflow:hidden; padding:10px;}
+  .deck{position:relative; height:340px; max-width:340px; margin-left:auto; overflow:visible; padding:10px;}
   .badge-float{
     position:absolute; width:84px; height:84px; border-radius:20px;
     display:flex; align-items:center; justify-content:center;
@@ -651,10 +651,11 @@ function renderDeck(){
   const deck = document.getElementById("deck");
   deck.innerHTML = "";
   const deckItems = PRODUCTS.slice(0,6);
+  // Fixed pixel positions (not %) so items stay close together on any screen size
   const positions = [
-    {top:"2%",left:"6%"},{top:"2%",left:"58%"},
-    {top:"36%",left:"22%"},{top:"36%",left:"68%"},
-    {top:"70%",left:"6%"},{top:"70%",left:"58%"}
+    {top:"6px",left:"10px"},{top:"0px",left:"170px"},
+    {top:"120px",left:"70px"},{top:"128px",left:"230px"},
+    {top:"244px",left:"10px"},{top:"236px",left:"170px"}
   ];
   deckItems.forEach((p,i)=>{
     const el = document.createElement("div");
