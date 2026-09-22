@@ -122,7 +122,7 @@
   .hero-stats div b{display:block; font-size:24px; font-family:'Space Grotesk';}
   .hero-stats div span{font-size:13px; color:var(--text-muted);}
 
-  .deck{position:relative; height:380px;}
+  .deck{position:relative; height:380px; min-width:320px; overflow:hidden; padding:10px;}
   .badge-float{
     position:absolute; width:84px; height:84px; border-radius:20px;
     display:flex; align-items:center; justify-content:center;
@@ -331,6 +331,17 @@
   }
   .float-wa{ animation: pulse-wa 2.4s ease-in-out infinite, wa-float 3.5s ease-in-out infinite; }
   @keyframes wa-float{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+
+
+  /* ---------- 3D text feel ---------- */
+  h1, h2, h3, .logo, .card h3, .desc, .cat, .t-card p, .t-who b, .t-who span,
+  .why-item h3, .why-item p, .trust-item, .footer-bottom, .footer-links a,
+  .faq-q, .faq-a p, .hero-stats b, .hero-stats span, .plan-name{
+    text-shadow: 0 2px 4px rgba(0,0,0,0.35);
+  }
+  .price{
+    text-shadow: 0 2px 3px rgba(0,0,0,0.5), 0 0 14px rgba(255,182,72,0.25);
+  }
 
   @media(max-width:860px){
     .hero .wrap{grid-template-columns:1fr;}
@@ -639,10 +650,11 @@ function renderMarquee(){
 function renderDeck(){
   const deck = document.getElementById("deck");
   deck.innerHTML = "";
-  const deckItems = PRODUCTS.slice(0,7);
+  const deckItems = PRODUCTS.slice(0,6);
   const positions = [
-    {top:"0%",left:"8%"},{top:"14%",left:"58%"},{top:"38%",left:"2%"},
-    {top:"46%",left:"70%"},{top:"64%",left:"30%"},{top:"6%",left:"78%"},{top:"72%",left:"52%"}
+    {top:"2%",left:"6%"},{top:"2%",left:"58%"},
+    {top:"36%",left:"22%"},{top:"36%",left:"68%"},
+    {top:"70%",left:"6%"},{top:"70%",left:"58%"}
   ];
   deckItems.forEach((p,i)=>{
     const el = document.createElement("div");
